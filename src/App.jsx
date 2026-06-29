@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useEffect } from "react"
 import { useRef } from "react"
+import axios from "axios"
 export default function App(){
     const[text,setText]=useState()
     const[notesArray,setNotesArray]=useState([])
@@ -27,20 +28,32 @@ export default function App(){
         <>
         <textarea name="note" 
         value={text}
-        onChange={(e)=>{setText(e.target.value)
-        }}
+        onChange={(e)=>{setText(e.target.value)}}
         />
-        <button onClick={()=>{
-             const newNote = {
-                id: count,
-                note: text,
-                time: new Date().toISOString()
-            }
-            setNotesArray([...notesArray, newNote])
-            setCount(count+1)
-            setText("")
-            
-        }}>save</button>
+
+        <button onClick={async ()=>{
+            const newNote = {
+            id: count,
+            note: text,
+            time: new Date().toISOString()
+        }
+        const updatedNotes = [...notesArray, newNote]
+        setNotesArray(updatedNotes)
+        setCount(count+1)
+        setText("")
+        try {
+            const response = await axios.post(
+            'http://localhost:5000/group-notes',
+            {
+                notes: updatedNotes
+            })
+            const grouped = await response.data
+            console.log('Grouped notes:', grouped)
+        } 
+        catch (error) {
+            console.error('Grouping error:', error)
+        }}}>save</button>
+
         <br />
         <br />
         <ul>
