@@ -17,7 +17,7 @@ app.post('/group-notes',async(req,res)=>{
         const response=await groq.chat.completions.create({
             model:'llama-3.1-8b-instant',
             messages:[
-            {
+                {
             role:'user',
             content:`You are a note grouping AI. Group the following notes into logical categories.
             Return ONLY a valid JSON array. No text before or after. Format: [{"groupName": "category name", "notes": [note objects]}]
@@ -25,7 +25,10 @@ app.post('/group-notes',async(req,res)=>{
             } 
             ]
         })
-        res.json(response.choices[0].message.content)
+        const output=response.choices[0].message.content
+        const parsed=JSON.parse(output)
+        res.json(parsed)
+
     }
     catch(error){
         res.status(500).json({error:error.message})
