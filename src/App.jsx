@@ -14,14 +14,14 @@ export default function App(){
     const textareaRef=useRef(null)
 
     const textAreaHeight=()=>{
-            const el=textareaRef.current
+        const el=textareaRef.current
 
-            if(!el){
-                return
-            }
-            el.style.height=`auto`
-
-            el.style.height=`${el.scrollHeight}px`
+        if(!el){
+            return
+        }
+        
+        el.style.height=`auto`
+        el.style.height=`${el.scrollHeight}px`
     }
 
     useEffect(()=>{
@@ -35,13 +35,12 @@ export default function App(){
         if (isFirstRender.current) {
         isFirstRender.current = false
         return
-        }localStorage.setItem('notes',JSON.stringify(notesArray))},[notesArray]
-        )
+        }localStorage.setItem('notes',JSON.stringify(notesArray))},[notesArray])
 
     useEffect(()=>{
         textAreaHeight()
     },[text])
-        
+
     return(
         <>
         <div className= "bg-[#111111] min-h-screen text-white">
@@ -71,7 +70,12 @@ export default function App(){
                 <Dock />
             </div>
             
-            {/* <button onClick={async ()=>{
+           
+       </div>
+        </>
+    )
+}
+{/* <button onClick={async ()=>{
                 const newNote = {
                 id: count,
                 note: text,
@@ -127,7 +131,3 @@ export default function App(){
                     </div>
                 )
             } */}
-       </div>
-        </>
-    )
-}
