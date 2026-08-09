@@ -1,124 +1,75 @@
-import express from "express";
-import Groq from "groq-sdk";
-import cors from "cors";
-import "dotenv/config";
-import mongoose from"mongoose"
-import Note from "./models/Note.js"
-import Group from "./models/Group.js"
-import User from "./models/User.js"
-mongoose.connect(process.env.MONGO)
-    .then(()=>console.log(`MongoDB connected`))
-    .catch(err=>console.log('MongoDB connection error',err))
+import "dotenv/config"
+import express from "express"
+import mongoose from "mongoose"
+import helmet from "helmet"
+import cors from "cors"
+import { ZodError } from "zod"
+import authRouter from "./routes/Auth.js"
+import notesRouter from "./routes/Note.js"
 
-const PORT = process.env.PORT;
+const app=express()
 
-const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY
-});
+app.use(helmet())
 
-const app = express().use(express.json());
+app.use(cors({
+    origin: process.env.ALLOWED_ORIGINS?.split(",") || "https://localhost:5173",
+    credentials:true
+}))
 
-app.use(cors());
+app.use(express.json({ limit: "10kb" }))
 
-app.post('/group-notes', async (req, res) => {
-    const { notes } = req.body;
+mongoose.connect(process.env.MONGO_URI)
+    .then(()=> console.log("MongoDB Connected"))
+    .catch(err=>{
+        console.log("MongoDB connection error :", err)
+        process.exit(1)
+    })
 
-    try {
-        const response = await groq.chat.completions.create({
-            model: 'llama-3.1-8b-instant',
-            messages: [
-            {
-                role: 'user',
-                content: `You are a note grouping AI. Group the following notes into logical categories.
-                Return ONLY a valid JSON array. No text before or after. Format: [{"groupName": "category name", "notes": [note objects]}]
-                Notes to group: ${JSON.stringify(notes)}`
-            }
-            ]
-        });
+app.use("/api/auth", authRouter)
+app.use("/api/notes",notesRouter)
 
-        const output = response.choices[0].message.content;
-        const parsed = JSON.parse(output);
+app.get("/health", (req, res)=>{
+    res.json({ status: "ok", db:mongoose.connection.readyState === 1 ? "connected" : "down"})
+})
 
-        res.json(parsed);
+app.use((req, res)=>{
+    res.status(404).json({ success:false, error: "Route not found"})
+})
 
-    } catch(error){
-        res.status(500).json({ error: error.message });
-    }
-});
+app.use((err, req, res, next)=>{
+    console.log(err)
 
-app.post('/api/notes',async(req,res)=>{
-    try{
-        const{userId, text, time}=req.body
-        if(!userId||!text){
-            return res.status(400).json({error:'userId and text are required'})
-        }
-        const newNote=new Note({
-            userId:userId,
-            text:text,
-            time:time || new Date()
+    if( err instanceof ZodError){
+        return res.status(400).json({
+            success: false,
+            error: "Validation failed",
+            details: err.issues.map(i=> ({ field: i.path.join("."), message: i.message }))
         })
-        await newNote.save()
-        res.json({success:true,noteId:newNote._id})
-    }
-    catch(err){
-        console.error('error saving note',err)
-        res.status(500).json({error:err.message})
     }
 
-})
-
-app.get('/api/notes',async(req,res)=>{
-    try{
-        const{userId}=req.query
-        console.log('Fetching notes for userId:', userId) 
-        if(!userId){
-            return res.status(400).json({error:'userId is reqiured'})
-        }
-
-        const notes= await Note.find({userId:userId}).sort({createdAt:-1})
-        console.log('Found notes:', notes)
-        res.json({success:true,notes:notes})
-    }
-    catch(err){
-        console.log('Error fetching notes',error)
-        res.status(500).json({err:err.message})
-    }
-})
-
-app.post('/api/groups',async(req,res)=>{
-    try{
-        const{userId,groupName,noteIds}=req.body
-        if(!userId||!groupName||!noteIds){
-            return res.status(400).json({error:'userId,groupName,noteIds required'})
-        }
-        const newGroup=new Group({
-            userId:userId,
-            groupName:groupName,
-            noteIds:noteIds
+    if (err.code === 11000){
+        const field = Object.keys(err.keyValue)[0]
+        return res.status(409).json({
+            success: false,
+            error: `${field} already exists`
         })
-        await newGroup.save()
-        res.json({success:true,groupId:newGroup._id})
     }
-    catch(err){
-        res.status(500).json({error:err.message})
-    }
+
+    const status = err.statusCode || 500
+    const message = err.statusCode ? err.message : "Internal server error"
+    res.status(status).json({ success: false, error:message })
 })
 
-app.get('/api/groups',async(req,res)=>{
-    try{
-        const{userId}=req.query
+const PORT = process.env.PORT || 3000
 
-        if(!userId){
-            res.status(400).json({error:'userId required'})
-        }
-        const groups=await Group.find({userId:userId}).sort({createdAt:-1})
-        res.json({success:true,groups:groups})
-    }
-    catch(err){
-        res.status(500).json({error:err.message})
-    }
+app.listen(PORT, ()=>{
+    console.log(`Server running on http://localhost:${PORT}`)
 })
 
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-});
+process.on("SIGTERM", ()=> {
+    console.log("SIGTERM received. Closing server...")
+    mongoose.connection.close(false).then(()=>{
+        console.log("MongoDB disconnected. Exiting.")
+        process.exit(0)
+    })
+})

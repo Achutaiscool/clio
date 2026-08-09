@@ -6,13 +6,14 @@ const noteSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    text: {
+    title: {
       type: String,
       required: true,
     },
-    time: {
-      type: Date,
+    content: {
+      type: String,
       required: true,
+      default: ""
     }
   },
   {
