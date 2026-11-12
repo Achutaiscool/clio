@@ -2,23 +2,21 @@ import mongoose from "mongoose"
 
 const noteSchema = new mongoose.Schema(
   {
-    userId: {
+    userId: { type: String, required: true, index: true },
+    title: { type: String, required: true },
+    content: { type: String, required: true, default: "" },
+    embedding: { type: [Number] },
+    tags: [{ type: String }],
+    aiFeedback: { type: String },
+    aiStatus: {
       type: String,
-      required: true,
+      enum: ["pending", "done", "failed", "quota_exceeded"],
+      default: "pending",
     },
-    title: {
-      type: String,
-      required: true,
-    },
-    content: {
-      type: String,
-      required: true,
-      default: ""
-    }
+    aiProcessedAt: { type: Date },
+    groupId: { type: String, index: true },
   },
-  {
-    timestamps: true
-  }
+  { timestamps: true }
 )
 
 export default mongoose.model("Note", noteSchema)

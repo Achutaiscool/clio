@@ -23,7 +23,7 @@ const loginSchema=z.object({
 
 const authLimiter=rateLimit({
     windowMs: 15*60*1000,
-    max:1000000,
+    max:5,
     message:{success:false,error : "Too many atempts. Try again later."}
 })
 

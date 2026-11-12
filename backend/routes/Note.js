@@ -2,6 +2,7 @@ import { Router } from "express"
 import { z } from "zod"
 import Note from "../models/Note.js"
 import { authenticate } from "../middleware/Auth.js"
+import { enqueueAIJob } from "../ai/index.js"
 
 const router = Router()
 
@@ -28,10 +29,18 @@ router.post("/", authenticate, asyncHandler(async (req, res)=>{
     const note= await Note.create({
         userId: req.userId,
         title:title?.trim() || "Untitled",
-        content
+        content,
+        aiStatus: "pending",
     })
 
-    res.status(201).json({ success: true, noteId: note._id })
+    enqueueAIJob(
+        note._id.toString(),
+        note.title,
+        note.content,
+        req.userId
+    )
+
+    res.status(201).json({ success: true, noteId: note._id, aiStatus: "pending" })
 
 }))
 /* */

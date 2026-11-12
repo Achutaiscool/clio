@@ -6,6 +6,7 @@ import cors from "cors"
 import { ZodError } from "zod"
 import authRouter from "./routes/Auth.js"
 import notesRouter from "./routes/Note.js"
+import aiRouter from "./routes/Ai.js"
 
 const app=express()
 
@@ -27,6 +28,7 @@ mongoose.connect(process.env.MONGO_URI)
 
 app.use("/api/auth", authRouter)
 app.use("/api/notes",notesRouter)
+app.use("/api/ai", aiRouter)
 
 app.get("/health", (req, res)=>{
     res.json({ status: "ok", db:mongoose.connection.readyState === 1 ? "connected" : "down"})
